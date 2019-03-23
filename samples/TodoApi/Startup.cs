@@ -3,10 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using NetCoreKit.Infrastructure.Bus;
 using NetCoreKit.Infrastructure.Bus.Redis;
 using NetCoreKit.Infrastructure.EfCore.MySql;
+using NetCoreKit.RestTemplate.EfCore;
 using NetCoreKit.Samples.TodoAPI.Domain;
 using NetCoreKit.Samples.TodoAPI.Infrastructure.Db;
 using NetCoreKit.Samples.TodoAPI.Infrastructure.Gateways;
-using NetCoreKit.Template.Rest.EfCore;
 
 namespace NetCoreKit.Samples.TodoAPI
 {

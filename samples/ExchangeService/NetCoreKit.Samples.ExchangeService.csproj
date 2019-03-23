@@ -39,8 +39,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\NetCoreKit.Infrastructure.Host.gRPC\NetCoreKit.Infrastructure.Host.gRPC.csproj" />
-    <ProjectReference Include="..\..\templates\NetCoreKit.Template.gRPC.Standard\NetCoreKit.Template.gRPC.Standard.csproj" />
+    <ProjectReference Include="..\..\src\NetCoreKit.Infrastructure.GrpcHost\NetCoreKit.Infrastructure.GrpcHost.csproj" />
+    <ProjectReference Include="..\..\src\NetCoreKit.Utils\NetCoreKit.Utils.csproj" />
+    <ProjectReference Include="..\..\templates\NetCoreKit.GrpcTemplate.Standard\NetCoreKit.GrpcTemplate.Standard.csproj" />
   </ItemGroup>
 
   <ItemGroup>

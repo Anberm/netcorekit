@@ -22,13 +22,13 @@ var libs = new List<string>{
     "./src/NetCoreKit.Infrastructure.Bus/NetCoreKit.Infrastructure.Bus.csproj",
     "./src/NetCoreKit.Infrastructure.Bus.Kafka/NetCoreKit.Infrastructure.Bus.Kafka.csproj",
     "./src/NetCoreKit.Infrastructure.Bus.Redis/NetCoreKit.Infrastructure.Bus.Redis.csproj",
-    "./src/NetCoreKit.Infrastructure.Host.gRPC/NetCoreKit.Infrastructure.Host.gRPC.csproj",
-    "./templates/NetCoreKit.Template.Rest.Standard/NetCoreKit.Template.Rest.Standard.csproj",
-    "./templates/NetCoreKit.Template.Rest.EfCore/NetCoreKit.Template.Rest.EfCore.csproj",
-    "./templates/NetCoreKit.Template.Rest.MongoDb/NetCoreKit.Template.Rest.MongoDb.csproj",
-    "./templates/NetCoreKit.Template.gRPC.Standard/NetCoreKit.Template.gRPC.Standard.csproj",
-    "./templates/NetCoreKit.Template.gRPC.EfCore/NetCoreKit.Template.gRPC.EfCore.csproj",
-    "./templates/NetCoreKit.Template.gRPC.MongoDb/NetCoreKit.Template.gRPC.MongoDb.csproj"
+    "./src/NetCoreKit.Infrastructure.GrpcHost/NetCoreKit.Infrastructure.GrpcHost.csproj",
+    "./templates/NetCoreKit.RestTemplate.Standard/NetCoreKit.RestTemplate.Standard.csproj",
+    "./templates/NetCoreKit.RestTemplate.EfCore/NetCoreKit.RestTemplate.EfCore.csproj",
+    "./templates/NetCoreKit.RestTemplate.MongoDb/NetCoreKit.RestTemplate.MongoDb.csproj",
+    "./templates/NetCoreKit.GrpcTemplate.Standard/NetCoreKit.GrpcTemplate.Standard.csproj",
+    "./templates/NetCoreKit.GrpcTemplate.EfCore/NetCoreKit.GrpcTemplate.EfCore.csproj",
+    "./templates/NetCoreKit.GrpcTemplate.MongoDb/NetCoreKit.GrpcTemplate.MongoDb.csproj"
 };
 
 Task("Clean")
@@ -123,7 +123,7 @@ Task("DeployNuget")
                 });
             }
         }
-        
+
     });
 
 Task("Default")
