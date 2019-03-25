@@ -37,7 +37,8 @@ namespace NetCoreKit.Infrastructure.GrpcHost
         {
             try
             {
-                var attribute = (CheckPolicyAttribute)continuation.Method.GetCustomAttributes(typeof(CheckPolicyAttribute), false).FirstOrDefault();
+                var attribute = (CheckPolicyAttribute)continuation.Method
+                    .GetCustomAttributes(typeof(CheckPolicyAttribute), false).FirstOrDefault();
                 if (attribute == null)
                 {
                     return await continuation(request, context);
@@ -50,14 +51,31 @@ namespace NetCoreKit.Infrastructure.GrpcHost
 
                 if (_config.GetSection("Idp") == null)
                 {
-                    throw new Exception("Provide bearer token in the header.");
+                    throw new Exception("Provide Idp configuration section in appsettings.json.");
                 }
 
                 var client = new HttpClient();
-                var idpConfig = _config.GetSection("Idp");
-                var disco = await client.GetDiscoveryDocumentAsync(idpConfig.GetValue<string>("Authority"));
-                var keys = new List<SecurityKey>();
 
+                var idpConfig = _config.GetSection("Idp");
+                var discoveryRequest = new DiscoveryDocumentRequest
+                {
+                    Address = idpConfig.GetValue<string>("Authority"),
+                    Policy =
+                    {
+                        Authority = idpConfig.GetValue<string>("Authority"),
+                        RequireHttps = false, // TODO: for demo only
+                        ValidateIssuerName = false, // TODO: for demo only
+                    }
+                };
+
+                var disco = await client.GetDiscoveryDocumentAsync(discoveryRequest);
+                if (disco?.KeySet == null)
+                {
+                    throw new Exception(
+                        $"Cannot discover IdpServer with Authority={idpConfig.GetValue<string>("Authority")} and Audience={idpConfig.GetValue<string>("Audience")}.");
+                }
+
+                var keys = new List<SecurityKey>();
                 foreach (var webKey in disco.KeySet.Keys)
                 {
                     var e = Base64Url.Decode(webKey.E);
@@ -74,7 +92,7 @@ namespace NetCoreKit.Infrastructure.GrpcHost
                 var parameters = new TokenValidationParameters
                 {
                     ValidIssuer = disco.Issuer,
-                    ValidAudience = idpConfig.GetValue<string>("Jwt_Audience"),
+                    ValidAudience = idpConfig.GetValue<string>("Audience"),
                     IssuerSigningKeys = keys,
 
                     NameClaimType = JwtClaimTypes.Name,
@@ -88,10 +106,24 @@ namespace NetCoreKit.Infrastructure.GrpcHost
                 handler.InboundClaimTypeMap.Clear();
 
                 var userToken = context.RequestHeaders.FirstOrDefault(x => x.Key == "authorization")?.Value;
-                var user = handler.ValidateToken(userToken.TrimStart("Bearer").TrimStart("bearer").TrimStart(" "), parameters, out _);
+
+                if (string.IsNullOrEmpty(userToken))
+                {
+                    throw new AuthenticationException("Cannot get authorization on the header.");
+                }
+
+                var user = handler.ValidateToken(userToken.TrimStart("Bearer").TrimStart("bearer").TrimStart(" "),
+                    parameters, out _);
+
+                if (user == null)
+                {
+                    throw new AuthenticationException(
+                        "Cannot validate jwt token. Check authority and audience configuration.");
+                }
+
                 if (!user.HasClaim(c => c.Value == attribute.Name))
                 {
-                    throw new AuthenticationException("Couldn't access to this API, please check your permission.");
+                    throw new AuthenticationException("Cannot access to this API, please check your permission.");
                 }
 
                 return await continuation(request, context);
@@ -100,6 +132,7 @@ namespace NetCoreKit.Infrastructure.GrpcHost
             {
                 // http://avi.im/grpc-errors
                 _logger.LogError(ex.Message);
+                _logger.LogError(ex.StackTrace);
                 throw new RpcException(new Status(StatusCode.Unauthenticated, ex.Message));
             }
         }
