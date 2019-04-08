@@ -1,5 +1,4 @@
 using System.Linq;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using NetCoreKit.Infrastructure.EfCore.Db;
 
@@ -7,28 +6,40 @@ namespace NetCoreKit.Infrastructure.EfCore.MySql
 {
     public sealed class DatabaseConnectionStringFactory : IDatabaseConnectionStringFactory
     {
-        private readonly IConfiguration _config;
-        private readonly DbOptions _dbOption;
+        public DbOptions DbOptions { get; }
 
-        public DatabaseConnectionStringFactory(IConfiguration config, IOptions<DbOptions> options)
+        public DatabaseConnectionStringFactory()
         {
-            _config = config;
-            _dbOption = options.Value;
+            var config = ConfigurationHelper.GetConfiguration();
+            var dbSection = config.GetSection("Features:EfCore:MySqlDb");
+            DbOptions = new DbOptions {
+                ConnString = dbSection["ConnString"],
+                FQDN = dbSection["FQDN"],
+                Database = dbSection["Database"],
+                DbInfo = dbSection["DbInfo"],
+                UserName = dbSection["UserName"],
+                Password = dbSection["Password"]
+            };
+        }
+
+        public DatabaseConnectionStringFactory(IOptions<DbOptions> options)
+        {
+            DbOptions = options.Value;
         }
 
         public string Create()
         {
-            var connPattern = _dbOption.ConnString;
-            var connConfigs = _dbOption.FQDN?.Split(':');
+            var connPattern = DbOptions.ConnString;
+            var connConfigs = DbOptions.FQDN?.Split(':');
             var fqdn = connConfigs?.First();
             var port = connConfigs?.Except(new[] {fqdn}).First();
 
             return string.Format(
                 connPattern,
                 fqdn, port,
-                _dbOption.UserName,
-                _dbOption.Password,
-                _dbOption.Database);
+                DbOptions.UserName,
+                DbOptions.Password,
+                DbOptions.Database);
         }
     }
 }
