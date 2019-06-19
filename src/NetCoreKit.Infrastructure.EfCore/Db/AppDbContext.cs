@@ -26,7 +26,6 @@ namespace NetCoreKit.Infrastructure.EfCore.Db
         protected override void OnModelCreating(ModelBuilder builder)
         {
             var typeToRegisters = new List<Type>();
-
             var ourModules = _config.LoadFullAssemblies();
 
             typeToRegisters.AddRange(ourModules.SelectMany(m => m.DefinedTypes));
@@ -55,33 +54,62 @@ namespace NetCoreKit.Infrastructure.EfCore.Db
         }
 
         /// <summary>
-        ///     Source:
-        ///     https://github.com/ardalis/CleanArchitecture/blob/master/src/CleanArchitecture.Infrastructure/Data/AppDbContext.cs
+        /// Source: https://github.com/ardalis/CleanArchitecture/blob/master/src/CleanArchitecture.Infrastructure/Data/AppDbContext.cs
         /// </summary>
         private void SaveChangesWithEvents(IDomainEventDispatcher domainEventDispatcher)
         {
-            var entitiesWithEvents = ChangeTracker.Entries<IAggregateRoot>()
-                .Select(e => e.Entity)
-                .Where(e => e.GetUncommittedEvents().Any())
+            var entities = ChangeTracker.Entries().Select(e => e.Entity);
+
+            entities
+                .Where(e =>
+                    !e.GetType().BaseType.IsGenericType &&
+                    typeof(AggregateRootBase).IsAssignableFrom(e.GetType()))
+                .Select(aggregateRoot =>
+                {
+                    var events = ((IAggregateRoot)aggregateRoot).GetUncommittedEvents();
+
+                    foreach (var domainEvent in events)
+                        domainEventDispatcher.Dispatch(domainEvent);
+
+                    ((IAggregateRoot)aggregateRoot).GetUncommittedEvents().Clear();
+                    return aggregateRoot;
+                })
                 .ToArray();
 
-            foreach (var entity in entitiesWithEvents)
-            {
-                var events = entity.GetUncommittedEvents().ToArray();
-                entity.GetUncommittedEvents().Clear();
-                foreach (var domainEvent in events)
-                    domainEventDispatcher.Dispatch(domainEvent);
-            }
+            entities
+                .Where(e =>
+                    e.GetType().BaseType.IsGenericType &&
+                    typeof(AggregateRootWithIdBase<>).IsAssignableFrom(e.GetType().BaseType.GetGenericTypeDefinition()))
+                .Select(aggregateRoot =>
+                {
+                    //todo: need a better code to avoid dynamic
+                    var events = ((dynamic)aggregateRoot).GetUncommittedEvents();
+
+                    foreach (var domainEvent in events)
+                        domainEventDispatcher.Dispatch(domainEvent);
+
+                    ((dynamic)aggregateRoot).GetUncommittedEvents().Clear();
+                    return aggregateRoot;
+                })
+                .ToArray();
         }
 
         private static void RegisterEntities(ModelBuilder modelBuilder, IEnumerable<Type> typeToRegisters)
         {
-            // TODO: will optimize this more
-            var types = typeToRegisters.Where(x =>
-                typeof(IEntity).IsAssignableFrom(x) &&
-                !x.GetTypeInfo().IsAbstract);
+            var concreteTypes = typeToRegisters.Where(x => !x.GetTypeInfo().IsAbstract && !x.GetTypeInfo().IsInterface);
+            var types = new List<Type>();
 
-            foreach (var type in types) modelBuilder.Entity(type);
+            foreach (var concreteType in concreteTypes)
+            {
+                if (concreteType.BaseType != null &&
+                    (typeof(AggregateRootBase).IsAssignableFrom(concreteType) ||
+                     (concreteType.GetTypeInfo().BaseType.IsGenericType &&
+                      typeof(AggregateRootWithIdBase<>).IsAssignableFrom(concreteType.GetTypeInfo().BaseType.GetGenericTypeDefinition())
+                    )))
+                {
+                    modelBuilder.Entity(concreteType);
+                }
+            }
         }
 
         private static void RegisterConvention(ModelBuilder modelBuilder)
